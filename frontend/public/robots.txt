@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /peta
+Disallow: /kategori
+Disallow: /lokasi
+Disallow: /users
+Disallow: /notifikasi
+
+Sitemap: https://api.geodesa.mendunia.id/sitemap.xml

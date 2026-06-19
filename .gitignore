@@ -1,0 +1,33 @@
+# ── Backend (Laravel) ──
+/backend/vendor/
+/backend/node_modules/
+/backend/.env
+/backend/.env.*
+/backend/storage/framework/cache/data/**
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/logs/*
+/backend/bootstrap/cache/*
+/backend/public/storage
+
+# ── Frontend (React + Vite) ──
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env
+/frontend/.env.local
+
+# ── OS ──
+Thumbs.db
+.DS_Store
+*.log
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── General ──
+.env
+.env.local
+.env.*.local
