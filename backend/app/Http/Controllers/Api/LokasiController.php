@@ -66,17 +66,35 @@ class LokasiController extends Controller
             $query->where('kategori_id', $request->kategori_id);
         }
         if ($request->nama) {
-            $search = $request->nama;
+            $search = trim($request->nama);
+
+            // Exact region match: if the search term matches a region name exactly,
+            // include ALL locations in that region (not just text search hits)
             $query->where(function ($q) use ($search) {
+                // Text search on name/address/description
                 $q->where('nama_tempat', 'like', '%' . $search . '%')
                   ->orWhere('alamat', 'like', '%' . $search . '%')
-                  ->orWhere('kecamatan_nama', 'like', '%' . $search . '%')
-                  ->orWhere('desa_nama', 'like', '%' . $search . '%')
-                  ->orWhere('kabupaten_nama', 'like', '%' . $search . '%')
-                  ->orWhere('provinsi_nama', 'like', '%' . $search . '%')
-                  ->orWhereHas('kategori', function ($q2) use ($search) {
-                      $q2->where('nama', 'like', '%' . $search . '%');
-                  });
+                  ->orWhere('deskripsi', 'like', '%' . $search . '%');
+
+                // Region name match — use exact match to find ALL locations in that region
+                $q->orWhere('provinsi_nama', $search);
+                $q->orWhere('kabupaten_nama', $search);
+                $q->orWhere('kecamatan_nama', $search);
+                $q->orWhere('desa_nama', $search);
+
+                // Category match
+                $q->orWhereHas('kategori', function ($q2) use ($search) {
+                    $q2->where('nama', 'like', '%' . $search . '%');
+                });
+
+                // Also try uppercase match for region names (database stores uppercase)
+                $upper = strtoupper($search);
+                if ($upper !== $search) {
+                    $q->orWhere('provinsi_nama', $upper);
+                    $q->orWhere('kabupaten_nama', $upper);
+                    $q->orWhere('kecamatan_nama', $upper);
+                    $q->orWhere('desa_nama', $upper);
+                }
             });
         }
 

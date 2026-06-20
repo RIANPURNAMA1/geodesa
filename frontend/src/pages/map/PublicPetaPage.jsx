@@ -588,6 +588,30 @@ export default function PublicPetaPage() {
     }
   };
 
+  // ── Auto-detect region/category from search term ──
+  const detectSearch = useCallback((term) => {
+    const result = { provinsi_id: undefined, kabupaten_id: undefined, kecamatan_id: undefined, desa_id: undefined, kategori_id: undefined, detected: '' };
+    if (!term || !term.trim()) return result;
+    const t = term.trim().toUpperCase();
+
+    const p = provinsis.find(x => x.nama.toUpperCase() === t);
+    if (p) { result.provinsi_id = p.id; result.detected = 'provinsi'; return result; }
+
+    const k = kategoris.find(x => x.nama.toUpperCase() === t);
+    if (k) { result.kategori_id = String(k.id); result.detected = 'kategori'; return result; }
+
+    const kab = kabupatens.find(x => x.nama.toUpperCase() === t);
+    if (kab) { result.kabupaten_id = kab.id; result.detected = 'kabupaten'; return result; }
+
+    const kec = kecamatans.find(x => x.nama.toUpperCase() === t);
+    if (kec) { result.kecamatan_id = kec.id; result.detected = 'kecamatan'; return result; }
+
+    const d = desas.find(x => x.nama.toUpperCase() === t);
+    if (d) { result.desa_id = d.id; result.detected = 'desa'; return result; }
+
+    return result;
+  }, [provinsis, kabupatens, kecamatans, desas, kategoris]);
+
   // ── Load markers ─────────────────────
   const loadData = useCallback(async () => {
     if (!mapObj.current) return;
@@ -596,14 +620,17 @@ export default function PublicPetaPage() {
       if (layerRef.current) { mapObj.current.removeLayer(layerRef.current); layerRef.current = null; }
       if (boundaryRef.current) { mapObj.current.removeLayer(boundaryRef.current); boundaryRef.current = null; }
 
-      const res = await lokasiApi.mapData({
-        provinsi_id: filters.provinsi_id || undefined,
-        kabupaten_id: filters.kabupaten_id || undefined,
-        kecamatan_id: filters.kecamatan_id || undefined,
-        desa_id: filters.desa_id || undefined,
-        kategori_id: filters.kategori_id || undefined,
+      const detected = detectSearch(searchTerm);
+      const params = {
+        provinsi_id: filters.provinsi_id || detected.provinsi_id || undefined,
+        kabupaten_id: filters.kabupaten_id || detected.kabupaten_id || undefined,
+        kecamatan_id: filters.kecamatan_id || detected.kecamatan_id || undefined,
+        desa_id: filters.desa_id || detected.desa_id || undefined,
+        kategori_id: filters.kategori_id || detected.kategori_id || undefined,
         nama: searchTerm || undefined,
-      });
+      };
+
+      const res = await lokasiApi.mapData(params);
 
       const lokasis = res.data.data;
       setCount(lokasis.length);
@@ -638,23 +665,36 @@ export default function PublicPetaPage() {
       mapObj.current.addLayer(group);
       layerRef.current = group;
 
-      if (!filters.provinsi_id && !filters.kabupaten_id && !filters.kecamatan_id && !filters.desa_id) {
+      const hasRegionFilter = filters.provinsi_id || filters.kabupaten_id || filters.kecamatan_id || filters.desa_id;
+      const hasDetectedRegion = detected.provinsi_id || detected.kabupaten_id || detected.kecamatan_id || detected.desa_id;
+      if (!hasRegionFilter && !hasDetectedRegion) {
         drawRegionBoundaries(mapObj.current, lokasis, regionRef);
       }
 
-      const w = wilayaNama.current;
-      if (filters.provinsi_id && (w.provinsi || w.kabupaten || w.kecamatan || w.desa)) {
+      // Geocode & boundary: from filter OR auto-detected region OR search term
+      const geocodeTarget = filters.provinsi_id
+        ? { provinsi: wilayaNama.current.provinsi, kabupaten: wilayaNama.current.kabupaten, kecamatan: wilayaNama.current.kecamatan, desa: wilayaNama.current.desa, detected: false }
+        : detected.detected
+          ? { provinsi: detected.provinsi_id ? (provinsis.find(x => String(x.id) === String(detected.provinsi_id))?.nama || '') : '',
+              kabupaten: detected.kabupaten_id ? (kabupatens.find(x => String(x.id) === String(detected.kabupaten_id))?.nama || '') : '',
+              kecamatan: detected.kecamatan_id ? (kecamatans.find(x => String(x.id) === String(detected.kecamatan_id))?.nama || '') : '',
+              desa: detected.desa_id ? (desas.find(x => String(x.id) === String(detected.desa_id))?.nama || '') : '',
+              detected: true }
+          : null;
+
+      const didGeocode = geocodeTarget && (geocodeTarget.provinsi || geocodeTarget.kabupaten || geocodeTarget.kecamatan || geocodeTarget.desa);
+      if (didGeocode) {
         try {
           const geoRes = await wilayahApi.geocode({
-            provinsi: w.provinsi || undefined,
-            kabupaten: w.kabupaten || undefined,
-            kecamatan: w.kecamatan || undefined,
-            desa: w.desa || undefined,
+            provinsi: geocodeTarget.provinsi || undefined,
+            kabupaten: geocodeTarget.kabupaten || undefined,
+            kecamatan: geocodeTarget.kecamatan || undefined,
+            desa: geocodeTarget.desa || undefined,
           });
           const geo = geoRes.data.data;
           if (geo) {
-            const zoom = w.desa ? 15 : w.kecamatan ? 13 : w.kabupaten ? 11 : 9;
-            const color = w.desa ? '#8B5CF6' : w.kecamatan ? '#F59E0B' : w.kabupaten ? '#10B981' : '#3B82F6';
+            const zoom = geocodeTarget.desa ? 15 : geocodeTarget.kecamatan ? 13 : geocodeTarget.kabupaten ? 11 : 9;
+            const color = geocodeTarget.desa ? '#8B5CF6' : geocodeTarget.kecamatan ? '#F59E0B' : geocodeTarget.kabupaten ? '#10B981' : '#3B82F6';
             if (geo.geojson) {
               boundaryRef.current = L.geoJSON(geo.geojson, {
                 style: { color, weight: 2, opacity: 0.8, fillColor: color, fillOpacity: 0.1 },
@@ -671,7 +711,12 @@ export default function PublicPetaPage() {
             }
           }
         } catch {}
-      } else if (lokasis.length > 0) {
+
+        // If we detected region from search but no filter was set, also show results
+        if (geocodeTarget.detected && lokasis.length === 0) {
+          // If no markers but we geocoded, still show results panel slightly differently
+        }
+      } else if (lokasis.length > 0 && !searchTerm?.trim()) {
         const bounds = lokasis.map(l => [parseFloat(l.latitude), parseFloat(l.longitude)]);
         mapObj.current.flyToBounds(bounds, { padding: [40,40], maxZoom: 15, duration: 1 });
       }
@@ -680,7 +725,7 @@ export default function PublicPetaPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, searchTerm]);
+  }, [filters, searchTerm, detectSearch, provinsis, kabupatens, kecamatans, desas, kategoris]);
 
   useEffect(() => {
     if (autoTimer.current) clearTimeout(autoTimer.current);
