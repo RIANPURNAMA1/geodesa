@@ -1113,8 +1113,8 @@ export default function PublicPetaPage() {
             </div>
           )}
 
-          {/* Bottom right controls */}
-          <div className={`absolute bottom-4 right-3 sm:bottom-6 sm:right-6 z-20 flex flex-col gap-2 pointer-events-none ${pageReady ? 'anim-fade-up-3' : 'opacity-0'}`}>
+          {/* Bottom left controls */}
+          <div className={`absolute bottom-4 left-3 sm:bottom-6 sm:left-6 z-20 flex flex-col gap-2 pointer-events-none ${pageReady ? 'anim-fade-up-3' : 'opacity-0'}`}>
             {routeActive && (
               <button onClick={clearRoute}
                 className="pointer-events-auto w-11 h-11 rounded-2xl bg-white/90 backdrop-blur-md shadow-lg border border-white/60 flex items-center justify-center hover:bg-white transition-all"
@@ -1127,14 +1127,12 @@ export default function PublicPetaPage() {
               title="Lokasi Saya">
               <LocateFixed size={18} className={locating ? 'animate-spin text-emerald-500' : 'text-gray-600'} />
             </button>
-          </div>
-
-          {/* Bottom left - info */}
-          <div className={`absolute bottom-4 left-3 sm:bottom-6 sm:left-6 z-20 pointer-events-none ${pageReady ? 'anim-fade-up-4' : 'opacity-0'}`}>
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/60 px-4 py-2.5 pointer-events-auto">
-              <p className="text-xs text-gray-500">
-                <span className="font-semibold text-gray-700">{loading ? '–' : count}</span> UMKM ditampilkan
-              </p>
+            <div className="pointer-events-auto">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/60 px-4 py-2.5">
+                <p className="text-xs text-gray-500">
+                  <span className="font-semibold text-gray-700">{loading ? '–' : count}</span> UMKM ditampilkan
+                </p>
+              </div>
             </div>
           </div>
 
