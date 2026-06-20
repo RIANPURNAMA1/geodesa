@@ -15,15 +15,19 @@ class WilayahController extends Controller
 
     public function provinsi(): JsonResponse
     {
-        $response = Http::get(self::API_BASE . '/provinces.json');
-        if (!$response->successful()) {
+        try {
+            $response = Http::timeout(10)->get(self::API_BASE . '/provinces.json');
+            if (!$response->successful()) {
+                return response()->json(['success' => false, 'message' => 'Gagal mengambil data provinsi'], 502);
+            }
+            $data = collect($response->json())->map(fn($item) => [
+                'id' => $item['id'],
+                'nama' => $item['name'],
+            ])->values();
+            return response()->json(['success' => true, 'data' => $data]);
+        } catch (ConnectionException $e) {
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data provinsi'], 502);
         }
-        $data = collect($response->json())->map(fn($item) => [
-            'id' => $item['id'],
-            'nama' => $item['name'],
-        ])->values();
-        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function kabupaten(Request $request): JsonResponse
@@ -32,16 +36,20 @@ class WilayahController extends Controller
         if (!$provId) {
             return response()->json(['success' => false, 'message' => 'Parameter provinsi_id wajib diisi'], 400);
         }
-        $response = Http::get(self::API_BASE . "/regencies/{$provId}.json");
-        if (!$response->successful()) {
+        try {
+            $response = Http::timeout(10)->get(self::API_BASE . "/regencies/{$provId}.json");
+            if (!$response->successful()) {
+                return response()->json(['success' => false, 'message' => 'Gagal mengambil data kabupaten'], 502);
+            }
+            $data = collect($response->json())->map(fn($item) => [
+                'id' => $item['id'],
+                'provinsi_id' => $provId,
+                'nama' => $item['name'],
+            ])->values();
+            return response()->json(['success' => true, 'data' => $data]);
+        } catch (ConnectionException $e) {
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data kabupaten'], 502);
         }
-        $data = collect($response->json())->map(fn($item) => [
-            'id' => $item['id'],
-            'provinsi_id' => $provId,
-            'nama' => $item['name'],
-        ])->values();
-        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function kecamatan(Request $request): JsonResponse
@@ -50,16 +58,20 @@ class WilayahController extends Controller
         if (!$kabId) {
             return response()->json(['success' => false, 'message' => 'Parameter kabupaten_id wajib diisi'], 400);
         }
-        $response = Http::get(self::API_BASE . "/districts/{$kabId}.json");
-        if (!$response->successful()) {
+        try {
+            $response = Http::timeout(10)->get(self::API_BASE . "/districts/{$kabId}.json");
+            if (!$response->successful()) {
+                return response()->json(['success' => false, 'message' => 'Gagal mengambil data kecamatan'], 502);
+            }
+            $data = collect($response->json())->map(fn($item) => [
+                'id' => $item['id'],
+                'kabupaten_id' => $kabId,
+                'nama' => $item['name'],
+            ])->values();
+            return response()->json(['success' => true, 'data' => $data]);
+        } catch (ConnectionException $e) {
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data kecamatan'], 502);
         }
-        $data = collect($response->json())->map(fn($item) => [
-            'id' => $item['id'],
-            'kabupaten_id' => $kabId,
-            'nama' => $item['name'],
-        ])->values();
-        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function desa(Request $request): JsonResponse
@@ -68,16 +80,20 @@ class WilayahController extends Controller
         if (!$kecId) {
             return response()->json(['success' => false, 'message' => 'Parameter kecamatan_id wajib diisi'], 400);
         }
-        $response = Http::get(self::API_BASE . "/villages/{$kecId}.json");
-        if (!$response->successful()) {
+        try {
+            $response = Http::timeout(10)->get(self::API_BASE . "/villages/{$kecId}.json");
+            if (!$response->successful()) {
+                return response()->json(['success' => false, 'message' => 'Gagal mengambil data desa'], 502);
+            }
+            $data = collect($response->json())->map(fn($item) => [
+                'id' => $item['id'],
+                'kecamatan_id' => $kecId,
+                'nama' => $item['name'],
+            ])->values();
+            return response()->json(['success' => true, 'data' => $data]);
+        } catch (ConnectionException $e) {
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data desa'], 502);
         }
-        $data = collect($response->json())->map(fn($item) => [
-            'id' => $item['id'],
-            'kecamatan_id' => $kecId,
-            'nama' => $item['name'],
-        ])->values();
-        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function lokasiSaya(Request $request): JsonResponse
@@ -87,15 +103,19 @@ class WilayahController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
         ]);
 
-        $response = Http::withHeaders([
-            'User-Agent' => 'ZonasiGISApp/1.0',
-        ])->get('https://nominatim.openstreetmap.org/reverse', [
-            'format'         => 'json',
-            'lat'            => $request->latitude,
-            'lon'            => $request->longitude,
-            'addressdetails' => 1,
-            'zoom'           => 18,
-        ]);
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'ZonasiGISApp/1.0',
+            ])->timeout(10)->get('https://nominatim.openstreetmap.org/reverse', [
+                'format'         => 'json',
+                'lat'            => $request->latitude,
+                'lon'            => $request->longitude,
+                'addressdetails' => 1,
+                'zoom'           => 18,
+            ]);
+        } catch (ConnectionException $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal reverse geocode'], 502);
+        }
 
         if (!$response->successful()) {
             return response()->json(['success' => false, 'message' => 'Gagal reverse geocode'], 502);
@@ -135,56 +155,60 @@ class WilayahController extends Controller
         $kecamatan = null;
         $desa = null;
 
-        if ($provinsiNama) {
-            $allProv = Http::get(self::API_BASE . '/provinces.json')->json();
-            $provinsi = $cari(array_map(fn($p) => ['id' => $p['id'], 'nama' => $p['name']], $allProv), $provinsiNama);
-        }
+        try {
+            if ($provinsiNama) {
+                $allProv = Http::timeout(10)->get(self::API_BASE . '/provinces.json')->json();
+                $provinsi = $cari(array_map(fn($p) => ['id' => $p['id'], 'nama' => $p['name']], $allProv), $provinsiNama);
+            }
 
-        if ($kabupatenNama && $provinsi) {
-            $allKab = Http::get(self::API_BASE . "/regencies/{$provinsi['id']}.json")->json();
-            $kabupaten = $cari(array_map(fn($k) => ['id' => $k['id'], 'nama' => $k['name']], $allKab), $kabupatenNama);
-        }
+            if ($kabupatenNama && $provinsi) {
+                $allKab = Http::timeout(10)->get(self::API_BASE . "/regencies/{$provinsi['id']}.json")->json();
+                $kabupaten = $cari(array_map(fn($k) => ['id' => $k['id'], 'nama' => $k['name']], $allKab), $kabupatenNama);
+            }
 
-        if ($kecamatanNama && $kabupaten) {
-            $allKec = Http::get(self::API_BASE . "/districts/{$kabupaten['id']}.json")->json();
-            $kecamatan = $cari(array_map(fn($k) => ['id' => $k['id'], 'nama' => $k['name']], $allKec), $kecamatanNama);
-        }
+            if ($kecamatanNama && $kabupaten) {
+                $allKec = Http::timeout(10)->get(self::API_BASE . "/districts/{$kabupaten['id']}.json")->json();
+                $kecamatan = $cari(array_map(fn($k) => ['id' => $k['id'], 'nama' => $k['name']], $allKec), $kecamatanNama);
+            }
 
-        if ($desaNama && $kecamatan) {
-            $allDesa = Http::get(self::API_BASE . "/villages/{$kecamatan['id']}.json")->json();
-            $desa = $cari(array_map(fn($d) => ['id' => $d['id'], 'nama' => $d['name']], $allDesa), $desaNama);
-        }
+            if ($desaNama && $kecamatan) {
+                $allDesa = Http::timeout(10)->get(self::API_BASE . "/villages/{$kecamatan['id']}.json")->json();
+                $desa = $cari(array_map(fn($d) => ['id' => $d['id'], 'nama' => $d['name']], $allDesa), $desaNama);
+            }
 
-        // Infer missing dari yang sudah ditemukan
-        if ($desa && !$kecamatan) {
-            $kecamatanId = substr($desa['id'], 0, 6);
-            $allKec = $kabupaten ? Http::get(self::API_BASE . "/districts/{$kabupaten['id']}.json")->json() : [];
-            foreach ($allKec as $k) {
-                if ($k['id'] === $kecamatanId) {
-                    $kecamatan = ['id' => $k['id'], 'nama' => $k['name']];
-                    break;
+            // Infer missing dari yang sudah ditemukan
+            if ($desa && !$kecamatan) {
+                $kecamatanId = substr($desa['id'], 0, 6);
+                $allKec = $kabupaten ? Http::timeout(10)->get(self::API_BASE . "/districts/{$kabupaten['id']}.json")->json() : [];
+                foreach ($allKec as $k) {
+                    if ($k['id'] === $kecamatanId) {
+                        $kecamatan = ['id' => $k['id'], 'nama' => $k['name']];
+                        break;
+                    }
                 }
             }
-        }
-        if ($kecamatan && !$kabupaten) {
-            $kabupatenId = substr($kecamatan['id'], 0, 4);
-            $allKab = $provinsi ? Http::get(self::API_BASE . "/regencies/{$provinsi['id']}.json")->json() : [];
-            foreach ($allKab as $k) {
-                if ($k['id'] === $kabupatenId) {
-                    $kabupaten = ['id' => $k['id'], 'nama' => $k['name']];
-                    break;
+            if ($kecamatan && !$kabupaten) {
+                $kabupatenId = substr($kecamatan['id'], 0, 4);
+                $allKab = $provinsi ? Http::timeout(10)->get(self::API_BASE . "/regencies/{$provinsi['id']}.json")->json() : [];
+                foreach ($allKab as $k) {
+                    if ($k['id'] === $kabupatenId) {
+                        $kabupaten = ['id' => $k['id'], 'nama' => $k['name']];
+                        break;
+                    }
                 }
             }
-        }
-        if ($kabupaten && !$provinsi) {
-            $provinsiId = substr($kabupaten['id'], 0, 2);
-            $allProv = Http::get(self::API_BASE . '/provinces.json')->json();
-            foreach ($allProv as $p) {
-                if ($p['id'] === $provinsiId) {
-                    $provinsi = ['id' => $p['id'], 'nama' => $p['name']];
-                    break;
+            if ($kabupaten && !$provinsi) {
+                $provinsiId = substr($kabupaten['id'], 0, 2);
+                $allProv = Http::timeout(10)->get(self::API_BASE . '/provinces.json')->json();
+                foreach ($allProv as $p) {
+                    if ($p['id'] === $provinsiId) {
+                        $provinsi = ['id' => $p['id'], 'nama' => $p['name']];
+                        break;
+                    }
                 }
             }
+        } catch (ConnectionException $e) {
+            // If API Wilayah Indonesia is unreachable, return partial results
         }
 
         return response()->json([
@@ -242,43 +266,51 @@ class WilayahController extends Controller
                 if ($alt !== $q) $queries[] = $alt;
             }
 
-            foreach ($queries as $tryQ) {
-                $resp = Http::withHeaders(['User-Agent' => 'ZonasiGISApp/1.0', 'Accept-Encoding' => 'gzip'])
-                    ->timeout(10)
-                    ->get('https://nominatim.openstreetmap.org/search', [
-                        'q' => $tryQ,
-                        'format' => 'json',
-                        'polygon_geojson' => 1,
-                        'limit' => 1,
-                    ]);
+            try {
+                foreach ($queries as $tryQ) {
+                    try {
+                        $resp = Http::withHeaders(['User-Agent' => 'ZonasiGISApp/1.0', 'Accept-Encoding' => 'gzip'])
+                            ->timeout(10)
+                            ->get('https://nominatim.openstreetmap.org/search', [
+                                'q' => $tryQ,
+                                'format' => 'json',
+                                'polygon_geojson' => 1,
+                                'limit' => 1,
+                            ]);
 
-                if ($resp->successful() && !empty($resp->json()[0])) {
-                    $r = $resp->json()[0];
-                    return [
-                        'lat'         => $r['lat'],
-                        'lon'         => $r['lon'],
-                        'boundingbox' => $r['boundingbox'] ?? null,
-                        'geojson'     => $r['geojson'] ?? null,
-                        'display_name' => $r['display_name'] ?? $tryQ,
-                    ];
+                        if ($resp->successful() && !empty($resp->json()[0])) {
+                            $r = $resp->json()[0];
+                            return [
+                                'lat'         => $r['lat'],
+                                'lon'         => $r['lon'],
+                                'boundingbox' => $r['boundingbox'] ?? null,
+                                'geojson'     => $r['geojson'] ?? null,
+                                'display_name' => $r['display_name'] ?? $tryQ,
+                            ];
+                        }
+                    } catch (ConnectionException $e) {
+                        continue;
+                    }
                 }
-            }
 
-            // Final fallback: plain search without polygon_geojson
-            $resp = Http::withHeaders(['User-Agent' => 'ZonasiGISApp/1.0'])
-                ->timeout(5)
-                ->get('https://nominatim.openstreetmap.org/search', [
-                    'q' => $q, 'format' => 'json', 'limit' => 1,
-                ]);
-            if ($resp->successful() && !empty($resp->json()[0])) {
-                $r = $resp->json()[0];
-                return [
-                    'lat' => $r['lat'], 'lon' => $r['lon'],
-                    'boundingbox' => $r['boundingbox'] ?? null,
-                    'geojson' => null,
-                    'display_name' => $r['display_name'] ?? $q,
-                ];
-            }
+                // Final fallback: plain search without polygon_geojson
+                try {
+                    $resp = Http::withHeaders(['User-Agent' => 'ZonasiGISApp/1.0'])
+                        ->timeout(5)
+                        ->get('https://nominatim.openstreetmap.org/search', [
+                            'q' => $q, 'format' => 'json', 'limit' => 1,
+                        ]);
+                    if ($resp->successful() && !empty($resp->json()[0])) {
+                        $r = $resp->json()[0];
+                        return [
+                            'lat' => $r['lat'], 'lon' => $r['lon'],
+                            'boundingbox' => $r['boundingbox'] ?? null,
+                            'geojson' => null,
+                            'display_name' => $r['display_name'] ?? $q,
+                        ];
+                    }
+                } catch (ConnectionException $e) {}
+            } catch (ConnectionException $e) {}
 
             return null;
         });
