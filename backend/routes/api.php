@@ -38,6 +38,10 @@ Route::get('/wilayah/geocode', [WilayahController::class, 'geocode']);
 // Routing (proxy ke OSRM)
 Route::get('/routing', [RoutingController::class, 'route']);
 
+// Kategori — public read
+Route::get('/kategori', [KategoriController::class, 'index']);
+Route::get('/kategori/{kategori}', [KategoriController::class, 'show']);
+
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -58,8 +62,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/desa', [DesaController::class, 'index']);
     Route::get('/desa/{desa}', [DesaController::class, 'show']);
 
-    // Kategori
-    Route::apiResource('kategori', KategoriController::class);
+    // Kategori — write only (read is public above)
+    Route::post('/kategori', [KategoriController::class, 'store']);
+    Route::put('/kategori/{kategori}', [KategoriController::class, 'update']);
+    Route::delete('/kategori/{kategori}', [KategoriController::class, 'destroy']);
 
     // Deteksi lokasi (reverse geocode via Nominatim + API Wilayah)
     Route::post('/wilayah/lokasi-saya', [WilayahController::class, 'lokasiSaya']);

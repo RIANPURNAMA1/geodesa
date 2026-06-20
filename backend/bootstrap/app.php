@@ -52,5 +52,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 404);
             }
         });
+
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                $message = config('app.debug') ? $e->getMessage() : 'Terjadi kesalahan server';
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 500);
+            }
+        });
     })
     ->create();
