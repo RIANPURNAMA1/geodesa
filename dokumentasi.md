@@ -166,9 +166,9 @@ php artisan view:cache
 ### 3.6 Set Permission
 
 ```bash
-sudo chown -R www-data:www-data /var/www/gis-cibulakan/backend
-sudo chmod -R 755 /var/www/gis-cibulakan/backend/storage
-sudo chmod -R 755 /var/www/gis-cibulakan/backend/bootstrap/cache
+sudo chown -R www-data:www-data /var/www/geodesa/backend
+sudo chmod -R 755 /var/www/geodesa/backend/storage
+sudo chmod -R 755 /var/www/geodesa/backend/bootstrap/cache
 ```
 
 ---
@@ -178,7 +178,7 @@ sudo chmod -R 755 /var/www/gis-cibulakan/backend/bootstrap/cache
 ### 4.1 Upload & Install
 
 ```bash
-cd /var/www/gis-cibulakan
+cd /var/www/geodesa
 
 # Clone atau upload frontend
 git clone <repository-url> frontend
