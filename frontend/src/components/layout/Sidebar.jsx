@@ -17,7 +17,7 @@ const navItems = [
 ];
 
 const bottomItems = [
-  { icon: Settings, label: 'Pengaturan' },
+  { to: '/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
 export default function Sidebar({ open, onClose }) {
@@ -107,13 +107,25 @@ export default function Sidebar({ open, onClose }) {
         <div className="relative px-3 pb-3 space-y-0.5">
           <div className="border-t border-white/5 mx-2 mb-3" />
           {bottomItems.map((item, i) => (
-            <button
+            <NavLink
               key={i}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:text-white/80 hover:bg-white/5 transition-all duration-150"
+              to={item.to}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
+                 ${isActive
+                   ? 'text-[#0D2B36] shadow-sm'
+                   : 'text-white/40 hover:text-white hover:bg-white/5'
+                 }`
+              }
+              style={({ isActive }) => isActive ? {
+                background: 'linear-gradient(135deg, #5AD67D, #34D399)',
+                boxShadow: '0 2px 12px rgba(90, 214, 125, 0.25)',
+              } : {}}
             >
               <item.icon size={16} className="flex-shrink-0" />
               <span>{item.label}</span>
-            </button>
+            </NavLink>
           ))}
         </div>
 

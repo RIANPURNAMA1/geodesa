@@ -107,6 +107,12 @@ export const routingApi = {
     api.get('/routing', { params: { from_lat: fromLat, from_lng: fromLng, to_lat: toLat, to_lng: toLng } }),
 };
 
+// ── Settings ──────────────────────────
+export const settingsApi = {
+  updateProfile:  (data) => api.post('/settings/profile', data),
+  updatePassword: (data) => api.post('/settings/password', data),
+};
+
 // ── Users ─────────────────────────────
 export const userApi = {
   list:    (params) => api.get('/users', { params }),

@@ -82,6 +82,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/lokasi/{lokasi}/komentar', [KomentarController::class, 'store']);
     Route::delete('/komentar/{komentar}', [KomentarController::class, 'destroy']);
 
+    // Settings
+    Route::post('/settings/profile', [\App\Http\Controllers\Api\SettingsController::class, 'updateProfile']);
+    Route::post('/settings/password', [\App\Http\Controllers\Api\SettingsController::class, 'updatePassword']);
+
     // Admin only
     Route::middleware(\App\Http\Middleware\AdminMiddleware::class)->group(function () {
         Route::apiResource('users', UserController::class);

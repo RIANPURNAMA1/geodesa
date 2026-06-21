@@ -14,6 +14,7 @@ import PublicPetaPage      from './pages/map/PublicPetaPage';
 import LokasiDetailPage    from './pages/lokasi/LokasiDetailPage';
 import UsersPage           from './pages/users/UsersPage';
 import NotifikasiPage      from './pages/notifikasi/NotifikasiPage';
+import SettingsPage        from './pages/settings/SettingsPage';
 
 function HomeRedirect() {
   const { isUser } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
                   <Route path="/peta"        element={<PetaPage />} />
                   <Route path="/lokasi"      element={<LokasiPage />} />
                   <Route path="/notifikasi"  element={<NotifikasiPage />} />
+                  <Route path="/pengaturan"  element={<SettingsPage />} />
                 </Route>
 
                 {/* Admin only */}

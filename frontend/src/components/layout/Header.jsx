@@ -8,6 +8,7 @@ const titleMap = {
   '/lokasi':     'Lokasi',
   '/users':      'Pengguna',
   '/notifikasi': 'Notifikasi',
+  '/pengaturan': 'Pengaturan',
 };
 
 export default function Header({ onToggleSidebar }) {

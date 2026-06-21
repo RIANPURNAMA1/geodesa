@@ -189,51 +189,36 @@ async function drawRegionBoundaries(map, lokasis, regionRef) {
   const layers = [];
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-  const kabSet = new Set();
-  const kecMap = {};
-  const desaMap = {};
-
+  // Collect unique kabupaten with province context for accurate geocoding
+  const kabMap = {};
   lokasis.forEach(l => {
-    if (l.kabupaten_nama) kabSet.add(l.kabupaten_nama);
-    if (l.kabupaten_nama && l.kecamatan_nama) {
-      kecMap[l.kabupaten_nama + '||' + l.kecamatan_nama] = { kab: l.kabupaten_nama, kec: l.kecamatan_nama };
-    }
-    if (l.kabupaten_nama && l.kecamatan_nama && l.desa_nama) {
-      desaMap[l.kabupaten_nama + '||' + l.kecamatan_nama + '||' + l.desa_nama] = { kab: l.kabupaten_nama, kec: l.kecamatan_nama, desa: l.desa_nama };
+    if (l.kabupaten_nama) {
+      const key = l.kabupaten_nama + '||' + (l.provinsi_nama || '');
+      if (!kabMap[key]) {
+        kabMap[key] = { kab: l.kabupaten_nama, prov: l.provinsi_nama || '' };
+      }
     }
   });
 
-  for (const nama of kabSet) {
+  let drawn = 0;
+  for (const item of Object.values(kabMap)) {
+    if (drawn >= 2) break; // max 2 boundaries to avoid clutter
     try {
-      const res = await wilayahApi.geocode({ kabupaten: nama });
+      const params = { kabupaten: item.kab };
+      if (item.prov) params.provinsi = item.prov;
+      const res = await wilayahApi.geocode(params);
       const geo = res.data.data;
       if (geo?.geojson) {
-        layers.push(L.geoJSON(geo.geojson, { style: { color: '#3B82F6', weight: 2, opacity: 0.5, fillColor: '#3B82F6', fillOpacity: 0.06 } }).addTo(map));
+        layers.push(L.geoJSON(geo.geojson, {
+          style: { color: '#3B82F6', weight: 2, opacity: 0.5, fillColor: '#3B82F6', fillOpacity: 0.06 }
+        }).addTo(map));
+        drawn++;
       } else if (geo?.boundingbox) {
         const [s, n, w, e] = geo.boundingbox.map(Number);
-        layers.push(L.rectangle([[s, w], [n, e]], { color: '#3B82F6', weight: 2, opacity: 0.5, fillColor: '#3B82F6', fillOpacity: 0.06 }).addTo(map));
-      }
-    } catch {}
-    await delay(300);
-  }
-
-  for (const item of Object.values(kecMap)) {
-    try {
-      const res = await wilayahApi.geocode({ kabupaten: item.kab, kecamatan: item.kec });
-      const geo = res.data.data;
-      if (geo?.geojson) {
-        layers.push(L.geoJSON(geo.geojson, { style: { color: '#10B981', weight: 1.5, opacity: 0.4, fillColor: '#10B981', fillOpacity: 0.08 } }).addTo(map));
-      }
-    } catch {}
-    await delay(300);
-  }
-
-  for (const item of Object.values(desaMap)) {
-    try {
-      const res = await wilayahApi.geocode({ kabupaten: item.kab, kecamatan: item.kec, desa: item.desa });
-      const geo = res.data.data;
-      if (geo?.geojson) {
-        layers.push(L.geoJSON(geo.geojson, { style: { color: '#F59E0B', weight: 1, opacity: 0.3, fillColor: '#F59E0B', fillOpacity: 0.1 } }).addTo(map));
+        layers.push(L.rectangle([[s, w], [n, e]], {
+          color: '#3B82F6', weight: 2, opacity: 0.5, fillColor: '#3B82F6', fillOpacity: 0.06
+        }).addTo(map));
+        drawn++;
       }
     } catch {}
     await delay(300);
@@ -667,8 +652,11 @@ export default function PublicPetaPage() {
 
       const hasRegionFilter = filters.provinsi_id || filters.kabupaten_id || filters.kecamatan_id || filters.desa_id;
       const hasDetectedRegion = detected.provinsi_id || detected.kabupaten_id || detected.kecamatan_id || detected.desa_id;
-      if (!hasRegionFilter && !hasDetectedRegion) {
-        drawRegionBoundaries(mapObj.current, lokasis, regionRef);
+      if (!hasRegionFilter && !hasDetectedRegion && !searchTerm?.trim()) {
+        const uniqueKab = new Set(lokasis.map(l => l.kabupaten_nama).filter(Boolean));
+        if (uniqueKab.size > 0 && uniqueKab.size <= 2) {
+          drawRegionBoundaries(mapObj.current, lokasis, regionRef);
+        }
       }
 
       // Geocode & boundary: from filter OR auto-detected region OR search term
@@ -809,11 +797,8 @@ export default function PublicPetaPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-5 py-2.5 rounded-2xl shadow-lg border border-white/60 flex items-center gap-3 text-sm text-gray-500">
-            <div className="w-5 h-5 rounded-full border-[3px] border-emerald-100 border-t-emerald-500 animate-spin" />
-            Memuat data peta...
-          </div>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 pointer-events-auto">
+          <div className="w-16 h-16 rounded-full border-[5px] border-white/20 border-t-emerald-400 animate-spin" />
         </div>
       )}
 
