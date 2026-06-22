@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const RAW_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Fix common typo: missing colon after protocol (e.g. "https//" instead of "https://")
+const BASE_URL = RAW_URL.replace(/^([a-zA-Z]+)\/\//, '$1://');
 
 const api = axios.create({
   baseURL: BASE_URL,
