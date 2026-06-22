@@ -113,7 +113,7 @@ export default function LokasiDetail({ lokasi }) {
         {lokasi.deskripsi && (
           <div className="mt-3 p-3 rounded-lg bg-gray-50">
             <p className="text-xs text-gray-400 mb-1">Deskripsi</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{lokasi.deskripsi}</p>
+            <div className="rte-display" dangerouslySetInnerHTML={{ __html: lokasi.deskripsi }} />
           </div>
         )}
       </div>

@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { Plus, Pencil, Trash2, Search, MapPin, Phone, User, Eye, X, Image, Map, Crosshair, Navigation } from 'lucide-react';
 import { lokasiApi, kategoriApi, wilayahApi } from '../../api';
 import Modal          from '../../components/common/Modal';
+import RichTextEditor from '../../components/common/RichTextEditor';
 import ConfirmDialog  from '../../components/common/ConfirmDialog';
 import Pagination     from '../../components/common/Pagination';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -289,15 +290,16 @@ export default function LokasiPage() {
     setLocationPicked(true);
   };
 
-  // Init map for the map-first add flow
+  // Init map for inline form (add & edit)
   useEffect(() => {
-    if (!modal || editing) return;
+    if (!modal) return;
     const container = addMapRef.current;
     if (!container) return;
 
     if (addMapObj.current) { addMapObj.current.remove(); addMapObj.current = null; }
 
-    const zoom = locationPicked ? 15 : 12;
+    const hasCoords = form.latitude && form.longitude;
+    const zoom = hasCoords ? 15 : 12;
     const lat = parseFloat(form.latitude) || -7.3274;
     const lng = parseFloat(form.longitude) || 108.3437;
     const map = L.map(container).setView([lat, lng], zoom);
@@ -306,20 +308,17 @@ export default function LokasiPage() {
     }).addTo(map);
 
     let marker = null;
-    if (locationPicked && form.latitude && form.longitude) {
+    if (hasCoords) {
       marker = L.marker([lat, lng], { draggable: true }).addTo(map);
       marker.on('dragend', (e) => {
         const { lat: mlat, lng: mlng } = e.target.getLatLng();
         setForm(p => ({ ...p, latitude: mlat.toFixed(8), longitude: mlng.toFixed(8) }));
       });
-    }
-
-    if (!locationPicked) {
+    } else {
       map.on('click', (e) => {
         if (!marker) marker = L.marker(e.latlng).addTo(map);
         else marker.setLatLng(e.latlng);
         setForm(p => ({ ...p, latitude: e.latlng.lat.toFixed(8), longitude: e.latlng.lng.toFixed(8) }));
-        setLocationPicked(true);
       });
     }
 
@@ -327,9 +326,8 @@ export default function LokasiPage() {
 
     return () => {
       if (addMapObj.current) { addMapObj.current.remove(); addMapObj.current = null; marker = null; }
-      // Don't remove the container div, just the map instance
     };
-  }, [modal, editing, locationPicked]);
+  }, [modal, editing, form.latitude, form.longitude]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -342,7 +340,6 @@ export default function LokasiPage() {
 
     try {
       if (editing) {
-        fd.append('_method', 'PUT');
         await lokasiApi.update(editing.id, fd);
         toast('Lokasi berhasil diperbarui');
       } else {
@@ -519,44 +516,26 @@ export default function LokasiPage() {
         )}
       </div>
 
-      {/* Form Modal — map-first flow */}
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Lokasi' : 'Tambah Lokasi'} size={!locationPicked || editing ? 'xl' : 'xl'}>
-        {!locationPicked && !editing ? (
-          /* Step 1: Map only — pick location first */
-          <div className="relative">
-            <div ref={addMapRef} className="w-full rounded-xl overflow-hidden border border-gray-200" style={{ height: 480 }} />
-            <div className="mt-3 flex gap-2 justify-center">
-              <button type="button" onClick={handleDetectLocation} disabled={detecting}
-                className="btn-primary btn-sm text-sm">
-                <Crosshair size={14} className={detecting ? 'animate-spin' : ''} />
-                {detecting ? 'Mendeteksi...' : 'Lokasi Terkini'}
-              </button>
-            </div>
-            <p className="mt-2 text-center text-xs text-gray-400">Atau klik pada peta untuk memilih titik lokasi.</p>
-          </div>
-        ) : (
-          /* Step 2: Compact map + detail form */
+      {/* Form Modal */}
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Lokasi' : 'Tambah Lokasi'} size="xl">
           <form onSubmit={handleSave} className="space-y-5">
-            {!editing && (
-              <div ref={addMapRef} className="w-full rounded-xl overflow-hidden border border-gray-200" style={{ height: 200 }} />
-            )}
-            {/* Identitas */}
-            <div>
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Informasi Lokasi</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+              <div className="lg:col-span-3 space-y-4">
                 <div>
                   <label className="label">Nama Tempat <span className="text-red-500">*</span></label>
                   <input className={`input ${errors.nama_tempat ? 'border-red-300' : ''}`}
                     placeholder="Warung Bu Sari" value={form.nama_tempat} onChange={set('nama_tempat')} required />
                   {errors.nama_tempat && <p className="text-xs text-red-500 mt-1">{errors.nama_tempat[0]}</p>}
                 </div>
-                <div>
-                  <label className="label">Nama Pemilik</label>
-                  <input className="input" placeholder="Nama pemilik" value={form.nama_pemilik} onChange={set('nama_pemilik')} />
-                </div>
-                <div>
-                  <label className="label">Nomor Telepon</label>
-                  <input className="input" placeholder="08xx" value={form.nomor_telepon} onChange={set('nomor_telepon')} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Nama Pemilik</label>
+                    <input className="input" placeholder="Nama pemilik" value={form.nama_pemilik} onChange={set('nama_pemilik')} />
+                  </div>
+                  <div>
+                    <label className="label">Nomor Telepon</label>
+                    <input className="input" placeholder="08xx" value={form.nomor_telepon} onChange={set('nomor_telepon')} />
+                  </div>
                 </div>
                 <div>
                   <label className="label">Kategori <span className="text-red-500">*</span></label>
@@ -568,130 +547,91 @@ export default function LokasiPage() {
                   {errors.kategori_id && <p className="text-xs text-red-500 mt-1">{errors.kategori_id[0]}</p>}
                 </div>
                 <div>
-                  <label className="label">Provinsi</label>
-                  <select className="input" value={form.provinsi_id} onChange={set('provinsi_id')}>
-                    <option value="">Pilih Provinsi</option>
-                    {provinsis.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
-                  </select>
+                  <label className="label">Alamat <span className="text-red-500">*</span></label>
+                  <textarea className={`input resize-none min-h-[70px] ${errors.alamat ? 'border-red-300' : ''}`}
+                    placeholder="Jl. Raya No. 1, RT 01, RW 02..." value={form.alamat} onChange={set('alamat')} required />
                 </div>
                 <div>
-                  <label className="label">Kabupaten</label>
-                  <select className="input" value={form.kabupaten_id} onChange={set('kabupaten_id')} disabled={!form.provinsi_id}>
-                    <option value="">Pilih Kabupaten</option>
-                    {kabupatens.map(k => <option key={k.id} value={k.id}>{k.nama}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Kecamatan <span className="text-red-500">*</span></label>
-                  <select className={`input ${errors.kecamatan_id ? 'border-red-300' : ''}`}
-                    value={form.kecamatan_id} onChange={set('kecamatan_id')} required disabled={!form.kabupaten_id}>
-                    <option value="">Pilih Kecamatan</option>
-                    {kecamatans.map(k => <option key={k.id} value={k.id}>{k.nama}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Desa <span className="text-red-500">*</span></label>
-                  <select className={`input ${errors.desa_id ? 'border-red-300' : ''}`}
-                    value={form.desa_id} onChange={set('desa_id')} required disabled={!form.kecamatan_id}>
-                    <option value="">Pilih Desa</option>
-                    {desas.map(d => <option key={d.id} value={d.id}>{d.nama}</option>)}
-                  </select>
+                  <label className="label">Deskripsi</label>
+                  <RichTextEditor value={form.deskripsi} onChange={v => set('deskripsi')({ target: { value: v } })} minH="150px" />
                 </div>
               </div>
-              <div className="mt-3">
-                <label className="label">Alamat <span className="text-red-500">*</span></label>
-                <textarea className={`input resize-none min-h-[70px] ${errors.alamat ? 'border-red-300' : ''}`}
-                  placeholder="Jl. Raya No. 1, RT 01, RW 02..." value={form.alamat} onChange={set('alamat')} required />
-              </div>
-              <div className="mt-3">
-                <label className="label">Deskripsi</label>
-                <textarea className="input resize-none min-h-[70px]" placeholder="Deskripsi lengkap lokasi..."
-                  value={form.deskripsi} onChange={set('deskripsi')} />
-              </div>
-            </div>
 
-            {/* Koordinat */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Koordinat GPS</h4>
-                <div className="flex gap-2">
-                  <button type="button" onClick={handleDetectLocation} disabled={detecting}
-                    className="btn-secondary btn-sm text-xs">
-                    <Crosshair size={12} className={detecting ? 'animate-spin' : ''} /> {detecting ? 'Mendeteksi...' : 'Lokasi Saya'}
-                  </button>
-                  <button type="button" onClick={() => setMapOpen(true)}
-                    className="btn-secondary btn-sm text-xs">
-                    <Map size={12} /> Pilih di Peta
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="lg:col-span-2 space-y-4">
                 <div>
-                  <label className="label">Latitude <span className="text-red-500">*</span></label>
-                  <input className={`input font-mono text-xs ${errors.latitude ? 'border-red-300' : ''}`}
-                    placeholder="-7.3274" value={form.latitude} onChange={set('latitude')} required />
-                  {errors.latitude && <p className="text-xs text-red-500 mt-1">{errors.latitude[0]}</p>}
-                </div>
-                <div>
-                  <label className="label">Longitude <span className="text-red-500">*</span></label>
-                  <input className={`input font-mono text-xs ${errors.longitude ? 'border-red-300' : ''}`}
-                    placeholder="108.3437" value={form.longitude} onChange={set('longitude')} required />
-                  {errors.longitude && <p className="text-xs text-red-500 mt-1">{errors.longitude[0]}</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Foto */}
-            <div>
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Foto Lokasi</h4>
-              {existFotos.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {existFotos.map(foto => (
-                    <div key={foto.id} className="relative group">
-                      <img src={foto.url} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
-                      <button type="button" onClick={() => removeFotoExist(foto)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={10} />
-                      </button>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="label mb-0">Koordinat GPS <span className="text-red-500">*</span></label>
+                    <button type="button" onClick={handleDetectLocation} disabled={detecting}
+                      className="btn-secondary btn-sm text-xs">
+                      <Crosshair size={12} className={detecting ? 'animate-spin' : ''} /> Lokasi Terkini
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input className={`input font-mono text-xs ${errors.latitude ? 'border-red-300' : ''}`}
+                        placeholder="Latitude" value={form.latitude} onChange={set('latitude')} required />
+                      {errors.latitude && <p className="text-xs text-red-500 mt-1">{errors.latitude[0]}</p>}
                     </div>
-                  ))}
-                </div>
-              )}
-              {fotoPrev.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {fotoPrev.map((src, i) => (
-                    <div key={i} className="relative group">
-                      <img src={src} alt="" className="w-20 h-20 object-cover rounded-lg border border-blue-200" />
-                      <button type="button" onClick={() => removeFotoNew(i)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={10} />
-                      </button>
+                    <div>
+                      <input className={`input font-mono text-xs ${errors.longitude ? 'border-red-300' : ''}`}
+                        placeholder="Longitude" value={form.longitude} onChange={set('longitude')} required />
+                      {errors.longitude && <p className="text-xs text-red-500 mt-1">{errors.longitude[0]}</p>}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-all w-full justify-center">
-                <Image size={16} /> Upload Foto
-              </button>
-              <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFotoChange} />
+                <div ref={addMapRef} className="w-full rounded-xl overflow-hidden border border-gray-200" style={{ height: 220 }} />
+                <p className="text-[11px] text-gray-400 text-center -mt-2">
+                  {form.latitude && form.longitude ? 'Marker bisa digeser' : 'Klik peta untuk memilih titik'}
+                </p>
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Foto Lokasi</h4>
+                  {existFotos.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {existFotos.map(foto => (
+                        <div key={foto.id} className="relative group">
+                          <img src={foto.url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                          <button type="button" onClick={() => removeFotoExist(foto)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {fotoPrev.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {fotoPrev.map((src, i) => (
+                        <div key={i} className="relative group">
+                          <img src={src} alt="" className="w-16 h-16 object-cover rounded-lg border border-blue-200" />
+                          <button type="button" onClick={() => removeFotoNew(i)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-gray-200 rounded-lg text-xs text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-all w-full justify-center">
+                    <Image size={14} /> Upload Foto
+                  </button>
+                  <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFotoChange} />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 accent-blue-600"
+                    checked={form.is_active} onChange={set('is_active')} />
+                  <span className="text-sm text-gray-700">Lokasi Aktif</span>
+                </label>
+              </div>
             </div>
 
-            {/* Status */}
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="is_active" className="w-4 h-4 accent-blue-600"
-                checked={form.is_active} onChange={set('is_active')} />
-              <label htmlFor="is_active" className="text-sm text-gray-700">Lokasi Aktif</label>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-2 border-t border-gray-100">
+            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
               <button type="button" onClick={() => setModal(false)} className="btn-secondary">Batal</button>
               <button type="submit" className="btn-primary" disabled={saving}>
                 {saving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Tambah Lokasi'}
               </button>
             </div>
           </form>
-        )}
       </Modal>
 
       {/* Map picker */}
